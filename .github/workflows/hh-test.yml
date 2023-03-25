@@ -1,0 +1,40 @@
+name: Hardhat Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["*"]
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      AUTO_MINING_ENABLED: true
+      MINING_INTERVAL: 0
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Node.js version
+        uses: actions/setup-node@v1
+        with:
+          node-version: "16.x"
+
+      - name: Install
+        run: yarn --frozen-lockfile --ignore-scripts
+
+      - name: 'Create env file'
+        run: |
+          echo "COREDAO_RPC_URL=https://rpc.coredao.org" > .env
+
+      - name: Compile
+        run: yarn compile
+
+      - name: Perform Hardhat test
+        run: yarn test:hh
