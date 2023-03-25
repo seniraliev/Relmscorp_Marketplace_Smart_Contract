@@ -33,6 +33,11 @@ const config: HardhatUserConfig = {
       //   // interval: Number(process.env.MINING_INTERVAL),
       // },
     },
+    goerli: {
+      url: node_url("goerli"),
+      accounts: accounts("goerli"),
+      tags: ["test", "live"],
+    },
     // localhost: {
     //   url: node_url("localhost"),
     //   accounts: accounts("localhost"),
@@ -44,27 +49,24 @@ const config: HardhatUserConfig = {
     //   tags: ["prod", "live"],
     // },
     // testnet: {
-    //   url: node_url("testnet"),
-    //   accounts: accounts("testnet"),
+    //   url: node_url("goerli"),
+    //   accounts: accounts("goerli"),
     //   tags: ["test", "live"],
     // },
   },
-  // etherscan: {
-  //   apiKey: {
-  //     mainnet: verifyKey("coredao"),
-  //     testnet: verifyKey("coredao"),
-  //   },
-  //   customChains: [
-  //     {
-  //       network: "testnet",
-  //       chainId: 1115,
-  //       urls: {
-  //         apiURL: "https://scan.test.btcs.network/api",
-  //         browserURL: "https://scan.test.btcs.network/",
-  //       },
-  //     },
-  //   ]
-  // },
+  etherscan: {
+    apiKey: verifyKey("etherscan"),
+    // customChains: [
+    //   {
+    //     network: "testnet",
+    //     chainId: 1115,
+    //     urls: {
+    //       apiURL: "https://scan.test.btcs.network/api",
+    //       browserURL: "https://scan.test.btcs.network/",
+    //     },
+    //   },
+    // ]
+  },
   solidity: {
     compilers: [
       {
