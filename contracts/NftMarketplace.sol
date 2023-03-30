@@ -269,7 +269,7 @@ contract NftMarketplace is ReentrancyGuard, Ownable {
     return (recoveredAddress == owner());
   }
 
-  function offer(
+  function makeOffer(
     address nftAddress,
     uint256 tokenId,
     uint256 offerPrice
@@ -305,7 +305,8 @@ contract NftMarketplace is ReentrancyGuard, Ownable {
     emit ItemOfferCanceled(msg.sender, nftAddress, tokenId);
   }
 
-  function acceptOffer(address nftAddress, uint256 tokenId, address collectionOwner, uint16 collectionFee, address offerAddress) external nonReentrant isOwner(nftAddress, tokenId, msg.sender){
+    
+  function acceptOffer(bytes calldata signature, address nftAddress, uint256 tokenId, address collectionOwner, uint16 collectionFee, address offerAddress) external nonReentrant isOwner(nftAddress, tokenId, msg.sender){
     if(offers[nftAddress][tokenId][offerAddress] == 0)
       revert NftMarketplace__NoOffered(nftAddress, tokenId, offerAddress);
 
@@ -313,33 +314,10 @@ contract NftMarketplace is ReentrancyGuard, Ownable {
     offers[nftAddress][tokenId][offerAddress] = 0;
     IERC721(nftAddress).safeTransferFrom(msg.sender, offerAddress, tokenId);
 
-    offerTransferProceeds(collectionOwner, collectionFee, msg.sender, offerPrice);
+    transferProceeds(signature, collectionOwner, collectionFee, msg.sender, offerPrice);
     emit ItemOfferAccepted(offerAddress, msg.sender, nftAddress, tokenId, offerPrice);
   }
 
-  function offerTransferProceeds(
-    address collectionOwner,
-    uint16 collectionFee,
-    address seller,
-    uint256 price
-  ) private {
-    uint256 marketplaceProceeds = (price * _fee) / 10000;
-    uint256 collectionOwnerProceeds = (price * collectionFee) / 10000;
-    uint256 sellerProceeds = price - marketplaceProceeds - collectionOwnerProceeds;
-    (bool successMarketplaceProceedsTransfer, ) = payable(owner()).call{value: marketplaceProceeds}("");
-    if (!successMarketplaceProceedsTransfer) {
-      revert NftMarketPlace__MarketplaceProceedsTransferFailed();
-    }
-    (bool successCollecionOwnerProceedsTransfer, ) = payable(collectionOwner).call{value: collectionOwnerProceeds}("");
-    if (!successCollecionOwnerProceedsTransfer) {
-      revert NftMarketPlace__CollectionOwnerProceedsTransferFailed();
-    }
-    (bool successSellerProceedsTransfer, ) = payable(seller).call{value: sellerProceeds}("");
-    if (!successSellerProceedsTransfer) {
-      revert NftMarketPlace__SellerProceedsTransferFailed();
-    }
-    emit ProceedsTransferred(seller, price, _fee, collectionFee);
-  }
   //////////////////////
   //  Getter Functions //
   /////////////////////

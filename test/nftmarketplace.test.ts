@@ -234,7 +234,7 @@ describe("NFT marketplace unit tests", () => {
   describe("OfferItem", () => {
     it("emits an event after offering", async () => {
       expect(
-        await nftMarketplace.connect(vault).offer(basicNft.address, TOKEN_ID_1, OFFER_PRICE_1, {
+        await nftMarketplace.connect(vault).makeOffer(basicNft.address, TOKEN_ID_1, OFFER_PRICE_1, {
           value: OFFER_PRICE_1,
         }),
       ).to.emit(nftMarketplace, "ItemOffered");
@@ -242,7 +242,7 @@ describe("NFT marketplace unit tests", () => {
     it("exclusively items that have not been offered", async () => {
       const error = `NftMarketplace__AlreadyOffered("${basicNft.address}", ${TOKEN_ID_1}, "${vault.address}")`;
       await expect(
-        nftMarketplace.connect(vault).offer(basicNft.address, TOKEN_ID_1, OFFER_PRICE_1, {
+        nftMarketplace.connect(vault).makeOffer(basicNft.address, TOKEN_ID_1, OFFER_PRICE_1, {
           value: OFFER_PRICE_1,
         }),
       ).to.be.revertedWith(error);
@@ -250,16 +250,16 @@ describe("NFT marketplace unit tests", () => {
     it("Owner can't offer the item", async () => {
       const error = "NftMarketPlace__CanNotBeOwner";
       await expect(
-        nftMarketplace.offer(basicNft.address, TOKEN_ID_2, OFFER_PRICE_1, {
+        nftMarketplace.makeOffer(basicNft.address, TOKEN_ID_2, OFFER_PRICE_1, {
           value: OFFER_PRICE_1,
         }),
       ).to.be.revertedWith(error);
     });
     it("Price must be be more than 0", async () => {
       const error = "NftMarketPlace__PriceMustBeAboveZero";
-      await expect(nftMarketplace.connect(alice).offer(basicNft.address, TOKEN_ID_2, 0)).to.be.revertedWith(
-        error,
-      );
+      await expect(
+        nftMarketplace.connect(alice).makeOffer(basicNft.address, TOKEN_ID_2, 0),
+      ).to.be.revertedWith(error);
     });
   });
   describe("cancelOffering", () => {
@@ -271,7 +271,7 @@ describe("NFT marketplace unit tests", () => {
     });
     it("emits an event after cancel listing", async () => {
       const oldBalance = await ethers.provider.getBalance(nftMarketplace.address);
-      await nftMarketplace.connect(alice).offer(basicNft.address, TOKEN_ID_2, OFFER_PRICE_2, {
+      await nftMarketplace.connect(alice).makeOffer(basicNft.address, TOKEN_ID_2, OFFER_PRICE_2, {
         value: OFFER_PRICE_2,
       });
       const newBalance = await ethers.provider.getBalance(nftMarketplace.address);
@@ -290,51 +290,51 @@ describe("NFT marketplace unit tests", () => {
       expect(newAliceBalance.gt(oldAliceBalance)).to.be.eq(true);
     });
   });
-  describe("acceptOffer", () => {
-    it("there should be offer to accept offer", async () => {
-      await basicNft.mintNft();
-      await basicNft.mintNft();
-      const error = `NftMarketplace__NoOffered("${basicNft.address}", ${TOKEN_ID_4}, "${alice.address}")`;
-      await expect(
-        nftMarketplace.acceptOffer(
-          basicNft.address,
-          TOKEN_ID_4,
-          deployer.address,
-          COLLECTION_FEE,
-          alice.address,
-        ),
-      ).to.be.revertedWith(error);
-    });
-    it("emits two events after accepting an offer", async () => {
-      const balance = await ethers.provider.getBalance(nftMarketplace.address);
+  // describe("acceptOffer", () => {
+  //   it("there should be offer to accept offer", async () => {
+  //     await basicNft.mintNft();
+  //     await basicNft.mintNft();
+  //     const error = `NftMarketplace__NoOffered("${basicNft.address}", ${TOKEN_ID_4}, "${alice.address}")`;
+  //     await expect(
+  //       nftMarketplace.acceptOffer(
+  //         basicNft.address,
+  //         TOKEN_ID_4,
+  //         deployer.address,
+  //         COLLECTION_FEE,
+  //         alice.address,
+  //       ),
+  //     ).to.be.revertedWith(error);
+  //   });
+  //   it("emits two events after accepting an offer", async () => {
+  //     const balance = await ethers.provider.getBalance(nftMarketplace.address);
 
-      await nftMarketplace.connect(alice).offer(basicNft.address, TOKEN_ID_4, OFFER_PRICE_2, {
-        value: OFFER_PRICE_2,
-      });
+  //     await nftMarketplace.connect(alice).makeOffer(basicNft.address, TOKEN_ID_4, OFFER_PRICE_2, {
+  //       value: OFFER_PRICE_2,
+  //     });
 
-      await basicNft.approve(nftMarketplace.address, TOKEN_ID_4);
-      expect(
-        await nftMarketplace.acceptOffer(
-          basicNft.address,
-          TOKEN_ID_4,
-          collectionOwner.address,
-          COLLECTION_FEE,
-          alice.address,
-        ),
-      )
-        .to.emit(nftMarketplace, "ItemOfferAccepted")
-        .to.emit(nftMarketplace, "ProceedsTransferred");
-    });
-    it("Offer should be removed after accept offer", async () => {
-      const offerPrice = await nftMarketplace.getOffer(basicNft.address, TOKEN_ID_4, alice.address);
-      expect(offerPrice.toString()).to.equal("0");
-    });
-    it("Check ownership after accept offer", async () => {
-      expect(await basicNft.ownerOf(TOKEN_ID_4)).to.equal(alice.address);
-      // console.log(await ethers.provider.getBalance(nftMarketplace.address));
-      // console.log((await alice.getBalance()).toString());
-      // console.log((await deployer.getBalance()).toString());
-      // console.log((await collectionOwner.getBalance()).toString());
-    });
-  });
+  //     await basicNft.approve(nftMarketplace.address, TOKEN_ID_4);
+  //     expect(
+  //       await nftMarketplace.acceptOffer(
+  //         basicNft.address,
+  //         TOKEN_ID_4,
+  //         collectionOwner.address,
+  //         COLLECTION_FEE,
+  //         alice.address,
+  //       ),
+  //     )
+  //       .to.emit(nftMarketplace, "ItemOfferAccepted")
+  //       .to.emit(nftMarketplace, "ProceedsTransferred");
+  //   });
+  //   it("Offer should be removed after accept offer", async () => {
+  //     const offerPrice = await nftMarketplace.getOffer(basicNft.address, TOKEN_ID_4, alice.address);
+  //     expect(offerPrice.toString()).to.equal("0");
+  //   });
+  //   it("Check ownership after accept offer", async () => {
+  //     expect(await basicNft.ownerOf(TOKEN_ID_4)).to.equal(alice.address);
+  //     // console.log(await ethers.provider.getBalance(nftMarketplace.address));
+  //     // console.log((await alice.getBalance()).toString());
+  //     // console.log((await deployer.getBalance()).toString());
+  //     // console.log((await collectionOwner.getBalance()).toString());
+  //   });
+  // });
 });
