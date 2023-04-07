@@ -23,7 +23,6 @@ error NftMarketPlace__NotSignedByMarketplaceOwner();
 error NftMarketplace__AlreadyOffered(address nftAddress, uint256 tokenId, address offerAddress);
 error NftMarketplace__NoOffered(address nftAddress, uint256 tokenId, address offerAddress);
 
-
 contract NftMarketplace is ReentrancyGuard, Ownable {
   using ECDSA for bytes32;
 
@@ -56,19 +55,24 @@ contract NftMarketplace is ReentrancyGuard, Ownable {
     uint256 tokenId,
     uint256 price
   );
-  event ProceedsTransferred(address indexed seller, uint256 totalAmount, uint16 marketplaceFee, uint16 collectionFee);
-  event ItemOffered(
+  event ProceedsTransferred(
+    address indexed seller,
+    uint256 totalAmount,
+    uint16 marketplaceFee,
+    uint16 collectionFee
+  );
+  event OfferMade(
     address indexed offerAddress,
     address indexed nftAddress,
     uint256 indexed tokenId,
     uint256 price
   );
-  event ItemOfferCanceled(
+  event OfferCanceled(
     address indexed offerAddress,
     address indexed nftAddress,
     uint256 indexed tokenId
   );
-  event ItemOfferAccepted(
+  event OfferAccepted(
     address indexed buyer,
     address indexed seller,
     address indexed nftAddress,
@@ -103,10 +107,7 @@ contract NftMarketplace is ReentrancyGuard, Ownable {
     _;
   }
 
-  modifier notListed(
-    address nftAddress,
-    uint256 tokenId
-  ) {
+  modifier notListed(address nftAddress, uint256 tokenId) {
     Listing memory listing = s_listings[nftAddress][tokenId];
     if (listing.price > 0) {
       revert NftMarketPlace__AlreadyListed(nftAddress, tokenId);
@@ -176,7 +177,13 @@ contract NftMarketplace is ReentrancyGuard, Ownable {
     }
     delete (s_listings[nftAddress][tokenId]);
     IERC721(nftAddress).safeTransferFrom(listedItem.seller, msg.sender, tokenId);
-    transferProceeds(signature, collectionOwner, collectionFee, listedItem.seller, listedItem.price);
+    transferProceeds(
+      signature,
+      collectionOwner,
+      collectionFee,
+      listedItem.seller,
+      listedItem.price
+    );
     emit ItemBought(msg.sender, listedItem.seller, nftAddress, tokenId, listedItem.price);
   }
 
@@ -235,11 +242,15 @@ contract NftMarketplace is ReentrancyGuard, Ownable {
     uint256 marketplaceProceeds = (price * _fee) / 10000;
     uint256 collectionOwnerProceeds = (price * collectionFee) / 10000;
     uint256 sellerProceeds = price - marketplaceProceeds - collectionOwnerProceeds;
-    (bool successMarketplaceProceedsTransfer, ) = payable(owner()).call{value: marketplaceProceeds}("");
+    (bool successMarketplaceProceedsTransfer, ) = payable(owner()).call{value: marketplaceProceeds}(
+      ""
+    );
     if (!successMarketplaceProceedsTransfer) {
       revert NftMarketPlace__MarketplaceProceedsTransferFailed();
     }
-    (bool successCollecionOwnerProceedsTransfer, ) = payable(collectionOwner).call{value: collectionOwnerProceeds}("");
+    (bool successCollecionOwnerProceedsTransfer, ) = payable(collectionOwner).call{
+      value: collectionOwnerProceeds
+    }("");
     if (!successCollecionOwnerProceedsTransfer) {
       revert NftMarketPlace__CollectionOwnerProceedsTransferFailed();
     }
@@ -273,41 +284,49 @@ contract NftMarketplace is ReentrancyGuard, Ownable {
     address nftAddress,
     uint256 tokenId,
     uint256 offerPrice
-  ) external payable isNotOwner(nftAddress, tokenId, msg.sender){
-    if(offers[nftAddress][tokenId][msg.sender] != 0)
+  ) external payable isNotOwner(nftAddress, tokenId, msg.sender) {
+    if (offers[nftAddress][tokenId][msg.sender] != 0)
       revert NftMarketplace__AlreadyOffered(nftAddress, tokenId, msg.sender);
 
     if (msg.value < offerPrice) {
       revert NftMarketPlace__OfferPriceNotMet(nftAddress, tokenId, offerPrice);
     }
 
-    if(offerPrice == 0)  revert NftMarketPlace__PriceMustBeAboveZero();
+    if (offerPrice == 0) revert NftMarketPlace__PriceMustBeAboveZero();
 
     offers[nftAddress][tokenId][msg.sender] = offerPrice;
-    
-    emit ItemOffered(msg.sender, nftAddress, tokenId, offerPrice);
+
+    emit OfferMade(msg.sender, nftAddress, tokenId, offerPrice);
   }
 
-  function cancelOffer (
+  function cancelOffer(
     address nftAddress,
     uint256 tokenId
-  ) external nonReentrant isNotOwner(nftAddress, tokenId, msg.sender){
-    if(offers[nftAddress][tokenId][msg.sender] == 0)
+  ) external nonReentrant isNotOwner(nftAddress, tokenId, msg.sender) {
+    if (offers[nftAddress][tokenId][msg.sender] == 0)
       revert NftMarketplace__NoOffered(nftAddress, tokenId, msg.sender);
 
-        (bool successCancelOfferProceedsTransfer, ) = payable(msg.sender).call{value: offers[nftAddress][tokenId][msg.sender]}("");
+    (bool successCancelOfferProceedsTransfer, ) = payable(msg.sender).call{
+      value: offers[nftAddress][tokenId][msg.sender]
+    }("");
     if (!successCancelOfferProceedsTransfer) {
       revert NftMarketPlace__CancelOfferProceedsTransferFailed();
     }
 
     offers[nftAddress][tokenId][msg.sender] = 0;
 
-    emit ItemOfferCanceled(msg.sender, nftAddress, tokenId);
+    emit OfferCanceled(msg.sender, nftAddress, tokenId);
   }
 
-    
-  function acceptOffer(bytes calldata signature, address nftAddress, uint256 tokenId, address collectionOwner, uint16 collectionFee, address offerAddress) external nonReentrant isOwner(nftAddress, tokenId, msg.sender){
-    if(offers[nftAddress][tokenId][offerAddress] == 0)
+  function acceptOffer(
+    bytes calldata signature,
+    address nftAddress,
+    uint256 tokenId,
+    address collectionOwner,
+    uint16 collectionFee,
+    address offerAddress
+  ) external nonReentrant isOwner(nftAddress, tokenId, msg.sender) {
+    if (offers[nftAddress][tokenId][offerAddress] == 0)
       revert NftMarketplace__NoOffered(nftAddress, tokenId, offerAddress);
 
     uint256 offerPrice = offers[nftAddress][tokenId][offerAddress];
@@ -315,7 +334,7 @@ contract NftMarketplace is ReentrancyGuard, Ownable {
     IERC721(nftAddress).safeTransferFrom(msg.sender, offerAddress, tokenId);
 
     transferProceeds(signature, collectionOwner, collectionFee, msg.sender, offerPrice);
-    emit ItemOfferAccepted(offerAddress, msg.sender, nftAddress, tokenId, offerPrice);
+    emit OfferAccepted(offerAddress, msg.sender, nftAddress, tokenId, offerPrice);
   }
 
   //////////////////////
@@ -326,7 +345,11 @@ contract NftMarketplace is ReentrancyGuard, Ownable {
     return s_listings[nftAddress][tokenId];
   }
 
-  function getOffer(address nftAddress, uint256 tokenId, address offerAddress) external view returns (uint256){
+  function getOffer(
+    address nftAddress,
+    uint256 tokenId,
+    address offerAddress
+  ) external view returns (uint256) {
     return offers[nftAddress][tokenId][offerAddress];
   }
 

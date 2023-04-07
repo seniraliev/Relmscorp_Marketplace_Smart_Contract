@@ -1,5 +1,5 @@
 import { HardhatUserConfig } from "hardhat/types";
-import { node_url, accounts, verifyKey } from "./utils/network";
+import { node_url, privateKey, verifyKey } from "./utils/network";
 import { removeConsoleLog } from "hardhat-preprocessor";
 
 import "@nomiclabs/hardhat-ethers";
@@ -35,7 +35,7 @@ const config: HardhatUserConfig = {
     },
     goerli: {
       url: node_url("goerli"),
-      accounts: accounts("goerli"),
+      accounts: privateKey('goerli'),
       tags: ["test", "live"],
     },
     // localhost: {
