@@ -13,6 +13,13 @@ contract NftContract is ERC721URIStorage {
     string symbol
   );
 
+  event NftMinted(
+    address indexed creator,
+    address indexed contractAddress,
+    uint256 tokenId,
+    string tokenUri
+  );
+
   constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {
     s_tokenCounter = 0;
     emit NftContractCreated(msg.sender, address(this), name_, symbol_);
@@ -21,7 +28,8 @@ contract NftContract is ERC721URIStorage {
   function mintNft(string memory tokenURI) public returns (uint256) {
     _safeMint(msg.sender, s_tokenCounter);
     _setTokenURI(s_tokenCounter, tokenURI);
-    s_tokenCounter = s_tokenCounter + 1;
+    emit NftMinted(msg.sender, address(this), s_tokenCounter, tokenURI);
+    ++s_tokenCounter;
     return s_tokenCounter - 1;
   }
 
