@@ -8,7 +8,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log("----------------------------------------------------");
   const nft = await deploy(NftContract__factory, {
-    args: ["Test NFT", "TNFT"],
+    args: ["Gold NFT", "GNFT"],
   });
 
   console.log(`NFT contract deployed to ${nft.address}`);
